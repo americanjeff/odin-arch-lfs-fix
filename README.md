@@ -12,7 +12,12 @@ Full diagnosis of the upstream bug:
 ## What differs from extra/odin
 
 - `makedepends`: adds `git-lfs`
-- `prepare()`: `git lfs install --force && git lfs pull`
+- `prepare()`: fetches the LFS objects. Two makepkg quirks are worked
+  around: `HOME=/dev/null` during the build breaks global
+  `git lfs install` (use `--local`, which writes the repo's own
+  `.git/config`), and the working copy's `origin` is makepkg's local bare
+  repo, which holds no LFS objects (pull from an added `upstream` remote
+  pointing at GitHub).
 - `pkgrel` matches the current extra pkgrel for this `pkgver` on purpose:
   `pacman -Syu` will not clobber this fixed build with the still-broken
   repo package, and a fixed upstream release (higher pkgrel or new pkgver)

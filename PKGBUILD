@@ -31,14 +31,22 @@ arch=(x86_64)
 depends=(clang libx11 llvm21-libs miniaudio python raylib)
 makedepends=(git git-lfs llvm21 stb)
 
-source=("git+https://github.com/odin-lang/Odin#tag=${pkgver//_/-}")
+_repository="https://github.com/odin-lang/Odin"
+source=("git+${_repository}#tag=${pkgver//_/-}")
 
 sha256sums=('330e1ef09bcc30a062187bcfb9c9a0061ed16afcc41b3b3bb3102efccdeb82ee')
 
 prepare() {
 	cd "$srcdir/Odin"
-	git lfs install --force
-	git lfs pull
+	# makepkg builds with HOME=/dev/null, so `git lfs install` (which writes
+	# the global gitconfig) fails with "could not lock config file /dev/null";
+	# --local writes this repo's .git/config instead. The working copy's
+	# origin is makepkg's local bare repo, which holds no LFS objects —
+	# they live on GitHub's LFS server — so pull from the real remote.
+	git lfs install --local
+	git remote add upstream "$_repository" 2>/dev/null \
+		|| git remote set-url upstream "$_repository"
+	git lfs pull upstream
 }
 
 build() {
