@@ -18,6 +18,10 @@ Full diagnosis of the upstream bug:
   `.git/config`), and the working copy's `origin` is makepkg's local bare
   repo, which holds no LFS objects (pull from an added `upstream` remote
   pointing at GitHub).
+- `depends`/`makedepends`: `llvm21`/`llvm21-libs` → `llvm`/`llvm-libs`.
+  `build_odin.sh` follows the system `llvm-config` (22 on this machine),
+  so the binary links `libLLVM.so.22.x`; the extra pin is stale for this
+  build. Re-check if the machine's default llvm changes.
 - `pkgrel` matches the current extra pkgrel for this `pkgver` on purpose:
   `pacman -Syu` will not clobber this fixed build with the still-broken
   repo package, and a fixed upstream release (higher pkgrel or new pkgver)
@@ -33,14 +37,23 @@ trailing spaces.
 
 ```sh
 makepkg -s                                  # builds in this dir
-sudo pacman -U odin-${pkgver}-*.pkg.tar.zst
+sudo pacman -U pkg/odin-dev_2026_09-*.pkg.tar.zst
 ```
 
 Verify the fix before installing:
 
 ```sh
-bsdtar -xOf odin-*.pkg.tar.zst usr/lib/odin/vendor/raylib/linux/libraylib.a \
+bsdtar -xOf pkg/odin-dev_2026_09-*.pkg.tar.zst \
+  usr/lib/odin/vendor/raylib/linux/libraylib.a \
   | head -c 20 | od -c     # expect an ar archive, not "version https://git-lfs…"
+```
+
+Smoke test after installing (note the dev-2026-09 entry-point form and
+`core:fmt` — the bare `println` builtin is gone):
+
+```sh
+printf 'package smoke\n\nimport "core:fmt"\n\nmain :: proc() {\n\tfmt.println("toolchain ok")\n}\n' > /tmp/smoke.odin
+odin run /tmp/smoke.odin -file
 ```
 
 ## Keeping up with upstream
