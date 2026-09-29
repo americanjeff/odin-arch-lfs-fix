@@ -1,0 +1,5 @@
+src/
+pkg/
+Odin/
+*.pkg.tar.zst
+*.log
