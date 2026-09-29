@@ -28,8 +28,10 @@ url="https://odin-lang.org/"
 license=(BSD-3-Clause Zlib)
 arch=(x86_64)
 
-depends=(clang libx11 llvm21-libs miniaudio python raylib)
-makedepends=(git git-lfs llvm21 stb)
+# extra pins llvm21; this build uses the system llvm (22 here), so track the
+# unversioned packages and adjust if the machine's default llvm changes.
+depends=(clang libx11 llvm-libs miniaudio python raylib)
+makedepends=(git git-lfs llvm stb)
 
 _repository="https://github.com/odin-lang/Odin"
 source=("git+${_repository}#tag=${pkgver//_/-}")
@@ -60,6 +62,7 @@ package() {
 	cd "$srcdir/Odin"
 
 	install -Dm755 odin "$pkgdir/usr/lib/odin/odin"
+	mkdir -p "$pkgdir/usr/bin"
 	ln -s ../lib/odin/odin "$pkgdir/usr/bin/odin"
 
 	cp -r base core shared vendor "$pkgdir/usr/lib/odin/"
