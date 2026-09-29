@@ -67,9 +67,11 @@ package() {
 
 	cp -r base core shared vendor "$pkgdir/usr/lib/odin/"
 
-	install -Dm644 README.md PROPOSAL-PROCESS.md \
-		"$pkgdir/usr/share/doc/odin/"
-	install -Dm644 LICENSE "$pkgdir/usr/share/licenses/odin/LICENSE"
+	# install -D only creates parent dirs for a single-file destination, so
+	# the doc/license dirs must be made explicitly.
+	mkdir -p "$pkgdir/usr/share/doc/odin" "$pkgdir/usr/share/licenses/odin"
+	install -m644 README.md PROPOSAL-PROCESS.md "$pkgdir/usr/share/doc/odin/"
+	install -m644 LICENSE "$pkgdir/usr/share/licenses/odin/LICENSE"
 
 	# raygui zlib license, extracted from the rlgl.odin header comment
 	# (mirrors the raygui-LICENSE shipped by the extra package)
