@@ -1,4 +1,4 @@
-# odin (local PKGBUILD: Git LFS vendor fix)
+# odin (local PKGBUILD: Git LFS vendor fix + raylib soname tracking)
 
 Local rebuild of the Arch `extra/odin` package. The upstream package ships
 the prebuilt vendor libraries (raylib, SDL3, wgpu, box3d — ~24 files) as
@@ -17,6 +17,11 @@ so the real archives land in `/usr/lib/odin/vendor/`.
   one object is missing from the upstream LFS server as of `dev-2026-10`
   (the windows `box3d.dll`) — so the pull tolerates failures and then
   verifies that every *linux* prebuilt is a real archive.
+- `prepare()`: the raylib symlink tracks the installed system raylib
+  (`readlink -f /usr/lib/libraylib.so`) instead of the hard-coded
+  `libraylib.so.600`, which broke when `extra/raylib` bumped 6.0 → 6.2
+  (GitHub odin-lang/Odin#8016) — every raylib link through the packaged
+  odin failed with `cannot find -l:…/libraylib.so.600`.
 - no `check()`: the core test suite is skipped to keep build times down.
 - `pkgrel` exceeds the installed repo package's (CachyOS rebuilds bump
   pkgrel to `-1.1`), so a plain `pacman -Syu` will not clobber this fixed
@@ -33,7 +38,7 @@ links `libLLVM.so.21.1`).
 
 ```sh
 GIT_LFS_SKIP_SMUDGE=1 makepkg             # builds in this dir
-sudo pacman -U odin-dev_2026_10-4-x86_64.pkg.tar.zst
+sudo pacman -U odin-dev_2026_10-5-x86_64.pkg.tar.zst
 ```
 
 (skip-smudge is required, not just faster: with a missing upstream LFS
@@ -42,7 +47,7 @@ object, any smudge of the tag fails.)
 Verify the fix before installing:
 
 ```sh
-bsdtar -xOf odin-dev_2026_10-4-x86_64.pkg.tar.zst \
+bsdtar -xOf odin-dev_2026_10-5-x86_64.pkg.tar.zst \
   usr/lib/odin/vendor/box3d/lib/linux-amd64/libbox3d.a \
   | head -c 20 | od -c     # expect an ar archive, not "version https://git-lfs…"
 ```

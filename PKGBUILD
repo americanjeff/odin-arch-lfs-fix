@@ -1,4 +1,5 @@
-# Local rebuild of the Arch extra/odin PKGBUILD with the Git LFS vendor fix.
+# Local rebuild of the Arch extra/odin PKGBUILD with the Git LFS vendor fix
+# and raylib soname tracking.
 #
 # Upstream tracks its prebuilt vendor libraries (raylib, SDL3, wgpu, box3d,
 # ~24 files) with Git LFS. makepkg checks out git+ sources with
@@ -10,14 +11,17 @@
 # pkgrel: the repo package for this pkgver is extra/odin dev_2026_10-1, and
 # the installed one (CachyOS rebuild) is -1.1, so pkgrel must exceed 1.1 or
 # a plain `pacman -Syu` re-upgrades back to the broken repo package. It is
-# 4 (2 and 3 also carried the box3d wasm binding patch, since reverted; 4 is
-# the LFS fix only, so the package content is otherwise identical to the
-# upstream source and the delta is pitchable as-is). The next upstream
+# 5 (2 and 3 also carried the box3d wasm binding patch, since reverted; 4 is
+# the LFS fix only; 5 tracks the installed raylib, since the hard-coded
+# libraylib.so.600 symlink broke when extra/raylib bumped 6.0 -> 6.2 —
+# GitHub odin-lang/Odin#8016). The next upstream
 # release (new pkgver) still upgrades over it, since pacman compares pkgver
 # before pkgrel.
 #
 # Deltas vs the upstream PKGBUILD (kept minimal so re-diffs stay easy):
 #   - prepare(): the Git LFS pull (the fix itself)
+#   - prepare(): the raylib symlink tracks the installed raylib (upstream
+#     hard-codes libraylib.so.600, broken by the raylib 6.2 bump)
 #   - package(): explicit install -d for the doc/license dirs (install -D
 #     with a multi-file + directory destination does not create them)
 #   - no check() (skips the core test suite to keep build times down)
@@ -43,7 +47,7 @@
 
 pkgname=odin
 pkgver=dev_2026_10 # monthly release tags
-pkgrel=4
+pkgrel=5
 _raygui=5.0
 pkgdesc='Data-oriented programming language'
 arch=(x86_64)
@@ -87,9 +91,13 @@ prepare() {
     exit 1
   fi
 
-  # Trickery for using the shared system library for Raylib
+  # Trickery for using the shared system library for Raylib. The binding
+  # links the file by name (libraylib.so.600), but extra/raylib moves the
+  # soname on every bump — the hard-coded target broke when raylib went
+  # 6.0 -> 6.2 (GitHub odin-lang/Odin#8016) — so track the installed one.
+  [ -e /usr/lib/libraylib.so ] || { echo "error: system raylib not installed" >&2; exit 1; }
   rm vendor/raylib/linux/{libraylib.a,libraylib.so.600,libraygui.a,libraygui.so}
-  ln -s /usr/lib/libraylib.so.600 vendor/raylib/linux/libraylib.so.600
+  ln -s "$(readlink -f /usr/lib/libraylib.so)" vendor/raylib/linux/libraylib.so.600
   setconf vendor/raylib/raylib.odin RAYLIB_SHARED '#config(RAYLIB_SHARED, true)'
   setconf vendor/raylib/rlgl/rlgl.odin RAYLIB_SHARED '#config(RAYLIB_SHARED, true)'
 
