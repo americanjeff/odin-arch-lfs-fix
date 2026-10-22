@@ -12,15 +12,14 @@
 # pkgrel: the repo package for this pkgver is extra/odin dev_2026_10-1, and
 # the installed one (CachyOS rebuild) is -1.1, so pkgrel must exceed 1.1 or
 # a plain `pacman -Syu` re-upgrades back to the broken repo package. It is
-# 3 (2 had only the LFS fix; 3 adds the box3d wasm binding patch below). The
-# next upstream release (new pkgver) still upgrades over it, since pacman
-# compares pkgver before pkgrel.
+# 4 (2 and 3 also carried the box3d wasm binding patch, since reverted; 4 is
+# the LFS fix only, so the package content is otherwise identical to the
+# upstream source and the delta is pitchable as-is). The next upstream
+# release (new pkgver) still upgrades over it, since pacman compares pkgver
+# before pkgrel.
 #
 # Deltas vs the upstream PKGBUILD (kept minimal so re-diffs stay easy):
 #   - prepare(): the Git LFS pull (the fix itself)
-#   - prepare(): strip the libc-shim require from vendor/box3d/box3d_wasm.odin
-#     (the wasm binding otherwise force-embeds libc-shim symbols that collide
-#     with emscripten's libc in an emcc build)
 #   - package(): explicit install -d for the doc/license dirs (install -D
 #     with a multi-file + directory destination does not create them)
 #   - no check() (skips the core test suite to keep build times down)
@@ -46,7 +45,7 @@
 
 pkgname=odin
 pkgver=dev_2026_10 # monthly release tags
-pkgrel=3
+pkgrel=4
 _raygui=5.0
 pkgdesc='Data-oriented programming language'
 arch=(x86_64)
@@ -89,15 +88,6 @@ prepare() {
     echo "error: linux prebuilts still LFS pointer stubs:$missing" >&2
     exit 1
   fi
-
-  # The vendor:box3d wasm binding force-imports the libc-shim (the
-  # @(require) in box3d_wasm.odin, a wasm-only file). That embeds strong
-  # references to the libc-shim's libc symbols in every wasm object that
-  # imports vendor:box3d; an app that compiles the toolchain's Box3D C with
-  # emcc and links one wasm module then collides with emscripten's own
-  # libc. Strip the require (the binding works without it; the native build
-  # never compiles this file).
-  sed -i '/vendor:libc-shim/d' vendor/box3d/box3d_wasm.odin
 
   # Trickery for using the shared system library for Raylib
   rm vendor/raylib/linux/{libraylib.a,libraylib.so.600,libraygui.a,libraygui.so}

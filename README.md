@@ -1,4 +1,4 @@
-# odin (local PKGBUILD: Git LFS vendor fix + box3d wasm patch)
+# odin (local PKGBUILD: Git LFS vendor fix)
 
 Local rebuild of the Arch `extra/odin` package. The upstream package ships
 the prebuilt vendor libraries (raylib, SDL3, wgpu, box3d — ~24 files) as
@@ -21,11 +21,6 @@ Full diagnosis of the upstream bug:
   (the windows `box3d.dll`) — so the pull tolerates failures and then
   verifies that every *linux* prebuilt is a real archive.
 - no `check()`: the core test suite is skipped to keep build times down.
-- `prepare()`: strips the `@(require) import _ "vendor:libc-shim"` line from
-  `vendor/box3d/box3d_wasm.odin`. Without it, every wasm object that imports
-  `vendor:box3d` force-embeds the libc-shim's libc symbols, which collide
-  with emscripten's libc in an emcc build (the binding itself works without
-  the require; native never compiles this wasm-only file).
 - `pkgrel` exceeds the installed repo package's (CachyOS rebuilds bump
   pkgrel to `-1.1`), so a plain `pacman -Syu` will not clobber this fixed
   build with the still-broken repo package; a fixed upstream release (new
@@ -41,7 +36,7 @@ links `libLLVM.so.21.1`).
 
 ```sh
 GIT_LFS_SKIP_SMUDGE=1 makepkg             # builds in this dir
-sudo pacman -U odin-dev_2026_10-3-x86_64.pkg.tar.zst
+sudo pacman -U odin-dev_2026_10-4-x86_64.pkg.tar.zst
 ```
 
 (skip-smudge is required, not just faster: with a missing upstream LFS
@@ -50,7 +45,7 @@ object, any smudge of the tag fails.)
 Verify the fix before installing:
 
 ```sh
-bsdtar -xOf odin-dev_2026_10-3-x86_64.pkg.tar.zst \
+bsdtar -xOf odin-dev_2026_10-4-x86_64.pkg.tar.zst \
   usr/lib/odin/vendor/box3d/lib/linux-amd64/libbox3d.a \
   | head -c 20 | od -c     # expect an ar archive, not "version https://git-lfs…"
 ```
