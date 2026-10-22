@@ -7,8 +7,6 @@
 # that links a packaged vendor lib fails. prepare() fetches the LFS objects
 # explicitly, which makepkg's smudge-disabled checkout never does.
 #
-# Full diagnosis: ~/dev/upstream/odin-arch/odin-lfs-bug.md
-#
 # pkgrel: the repo package for this pkgver is extra/odin dev_2026_10-1, and
 # the installed one (CachyOS rebuild) is -1.1, so pkgrel must exceed 1.1 or
 # a plain `pacman -Syu` re-upgrades back to the broken repo package. It is

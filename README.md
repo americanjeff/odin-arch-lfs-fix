@@ -6,9 +6,6 @@ Git LFS pointer stubs, because makepkg checks out `git+` sources with
 `GIT_LFS_SKIP_SMUDGE=1`. This PKGBUILD adds `git lfs pull` in `prepare()`
 so the real archives land in `/usr/lib/odin/vendor/`.
 
-Full diagnosis of the upstream bug:
-`~/dev/upstream/odin-arch/odin-lfs-bug.md`.
-
 ## What differs from extra/odin
 
 - `makedepends`: adds `git-lfs`
