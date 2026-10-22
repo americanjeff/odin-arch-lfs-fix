@@ -1,4 +1,4 @@
-# odin (local PKGBUILD with the Git LFS vendor fix)
+# odin (local PKGBUILD: Git LFS vendor fix + box3d wasm patch)
 
 Local rebuild of the Arch `extra/odin` package. The upstream package ships
 the prebuilt vendor libraries (raylib, SDL3, wgpu, box3d — ~24 files) as
@@ -12,44 +12,50 @@ Full diagnosis of the upstream bug:
 ## What differs from extra/odin
 
 - `makedepends`: adds `git-lfs`
-- `prepare()`: fetches the LFS objects. Two makepkg quirks are worked
-  around: `HOME=/dev/null` during the build breaks global
-  `git lfs install` (use `--local`, which writes the repo's own
-  `.git/config`), and the working copy's `origin` is makepkg's local bare
-  repo, which holds no LFS objects (pull from an added `upstream` remote
-  pointing at GitHub).
-- `depends`/`makedepends`: `llvm21`/`llvm21-libs` → `llvm`/`llvm-libs`.
-  `build_odin.sh` follows the system `llvm-config` (22 on this machine),
-  so the binary links `libLLVM.so.22.x`; the extra pin is stale for this
-  build. Re-check if the machine's default llvm changes.
-- `pkgrel` matches the current extra pkgrel for this `pkgver` on purpose:
-  `pacman -Syu` will not clobber this fixed build with the still-broken
-  repo package, and a fixed upstream release (higher pkgrel or new pkgver)
-  upgrades over it automatically.
+- `prepare()`: fetches the LFS objects. Three quirks are worked around:
+  `HOME=/dev/null` during the build breaks global `git lfs install`
+  (use `--local`, which writes the repo's own `.git/config`), the working
+  copy's `origin` is makepkg's local bare repo, which holds no LFS objects
+  (pull from an added `upstream` remote pointing at GitHub), and at least
+  one object is missing from the upstream LFS server as of `dev-2026-10`
+  (the windows `box3d.dll`) — so the pull tolerates failures and then
+  verifies that every *linux* prebuilt is a real archive.
+- no `check()`: the core test suite is skipped to keep build times down.
+- `prepare()`: strips the `@(require) import _ "vendor:libc-shim"` line from
+  `vendor/box3d/box3d_wasm.odin`. Without it, every wasm object that imports
+  `vendor:box3d` force-embeds the libc-shim's libc symbols, which collide
+  with emscripten's libc in an emcc build (the binding itself works without
+  the require; native never compiles this wasm-only file).
+- `pkgrel` exceeds the installed repo package's (CachyOS rebuilds bump
+  pkgrel to `-1.1`), so a plain `pacman -Syu` will not clobber this fixed
+  build with the still-broken repo package; a fixed upstream release (new
+  pkgver) still upgrades over it automatically, since pacman compares
+  pkgver before pkgrel.
 
-Everything else mirrors the extra PKGBUILD as of `dev_2026_09-3`
-(reconstructed from the installed package manifest + upstream tree; the
-ABS/GitLab PKGBUILD source was not reachable unauthenticated). The
-generated `raygui-LICENSE` matches the installed file except for a few
-trailing spaces.
+Everything else mirrors the extra PKGBUILD as of `dev_2026_10-1` (rebased
+on the upstream GitLab source, including its raygui-from-source build and
+the `llvm21` pin — this machine has llvm21, and the installed binary
+links `libLLVM.so.21.1`).
 
 ## Build and install
 
 ```sh
-makepkg -s                                  # builds in this dir
-sudo pacman -U pkg/odin-dev_2026_09-*.pkg.tar.zst
+GIT_LFS_SKIP_SMUDGE=1 makepkg             # builds in this dir
+sudo pacman -U odin-dev_2026_10-3-x86_64.pkg.tar.zst
 ```
+
+(skip-smudge is required, not just faster: with a missing upstream LFS
+object, any smudge of the tag fails.)
 
 Verify the fix before installing:
 
 ```sh
-bsdtar -xOf pkg/odin-dev_2026_09-*.pkg.tar.zst \
-  usr/lib/odin/vendor/raylib/linux/libraylib.a \
+bsdtar -xOf odin-dev_2026_10-3-x86_64.pkg.tar.zst \
+  usr/lib/odin/vendor/box3d/lib/linux-amd64/libbox3d.a \
   | head -c 20 | od -c     # expect an ar archive, not "version https://git-lfs…"
 ```
 
-Smoke test after installing (note the dev-2026-09 entry-point form and
-`core:fmt` — the bare `println` builtin is gone):
+Smoke test after installing:
 
 ```sh
 printf 'package smoke\n\nimport "core:fmt"\n\nmain :: proc() {\n\tfmt.println("toolchain ok")\n}\n' > /tmp/smoke.odin
@@ -61,8 +67,11 @@ odin run /tmp/smoke.odin -file
 When `extra/odin` bumps:
 
 1. Diff this PKGBUILD against the new extra PKGBUILD
-   (ABS/GitLab, or `pacman -Si odin` for the metadata).
-2. Bump `pkgver`/`pkgrel` to match, re-run `makepkg -g`, rebuild, reinstall.
-3. If the LFS bug is fixed upstream, drop the `prepare()` block and the
-   `git-lfs` makedep and this project can be retired — just use the repo
-   package.
+   (`https://gitlab.archlinux.org/archlinux/packaging/packages/odin/-/raw/main/PKGBUILD`).
+2. Bump `pkgver`; set `pkgrel` above the installed repo package's (check
+   `pacman -Q odin`), re-run `makepkg -g` for the new checksums, rebuild,
+   reinstall.
+3. If the LFS bug is fixed upstream (and no LFS objects are missing),
+   drop the `prepare()` block, the `git-lfs` makedep, and the
+   `GIT_LFS_SKIP_SMUDGE` env and this project can be retired — just use
+   the repo package.

@@ -1,5 +1,6 @@
 src/
 pkg/
 Odin/
+raygui-5.0.tar.gz
 *.pkg.tar.zst
 *.log
